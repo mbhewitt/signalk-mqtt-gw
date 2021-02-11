@@ -14,7 +14,7 @@
  * limitations under the License.
 */
 
-const id = 'signalk-mqtt-gw';
+const id = 'signalk-mqtt-gw-mew';
 const debug = require('debug')(id);
 const mosca = require('mosca');
 const mqtt = require('mqtt');
@@ -27,36 +27,36 @@ module.exports = function(app) {
   var server
 
   plugin.id = id;
-  plugin.name = 'Signal K - MQTT Gateway';
+  plugin.name = 'Signal K - MQTT Gateway - mew';
   plugin.description =
     'plugin that provides gateway functionality between Signal K and MQTT';
 
   plugin.schema = {
-    title: 'Signal K - MQTT Gateway',
+    title: 'Signal K - MQTT Gateway -mew',
     type: 'object',
     required: ['port'],
     properties: {
       runLocalServer: {
         type: 'boolean',
         title: 'Run local server (publish all deltas there in individual topics based on SK path and convert all data published in them by other clients to SK deltas)',
-        default: false,
+        default: true,
       },
       port: {
         type: 'number',
         title: 'Local server port',
-        default: 1883,
+        default: 1884,
       },
       sendToRemote: {
         type: 'boolean',
         title: 'Send data for paths listed below to remote server',
-        default: false,
+        default: true,
       },
       remoteHost: {
         type: 'string',
         title: 'MQTT server Url (starts with mqtt/mqtts)',
         description:
           'MQTT server that the paths listed below should be sent to',
-        default: 'mqtt://somehost',
+        default: 'mqtt://localhost',
       },
       username: {
         type: "string",
@@ -221,7 +221,17 @@ module.exports = function(app) {
     }
     return value.toString()
   }
+  function tryParseJSON (jsonString){
+    try {
+        var o = JSON.parse(jsonString);
+        if (o && typeof o === "object") {
+            return o;
+        }
+    }
+    catch (e) { }
 
+    return false;
+  };
   function extractSkData(packet) {
     const result = {
       valid: false,
@@ -237,7 +247,15 @@ module.exports = function(app) {
     result.context = 'vessels.' + app.selfId;
     result.path = pathParts.splice(2).join('.');
     if (packet.payload) {
-      result.value = Number(packet.payload.toString());
+//      result.value = Number(packet.payload.toString());
+      resultString = packet.payload.toString();
+      if(!isNaN(resultString)){
+         result.value = Number(resultString)
+      } else if(json=tryParseJSON(resultString)){
+         result.value=json
+      } else {
+         result.value=resultString
+      }
     }
     result.valid = true;
     return result;
